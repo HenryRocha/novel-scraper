@@ -1,5 +1,5 @@
 from loguru import logger
-from models import ScraperError
+from novelscraper.models import ScraperError
 from requests import get
 
 

@@ -1,1 +1,1 @@
-from models.exceptions import *
+from novelscraper.models.exceptions import *

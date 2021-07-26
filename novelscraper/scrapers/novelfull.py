@@ -7,9 +7,8 @@ from bs4 import BeautifulSoup
 from bs4.element import Tag
 from ebooklib import epub
 from loguru import logger
-from models import ScraperError
-
-from scrapers.basescraper import BaseScraper
+from novelscraper.models import ScraperError
+from novelscraper.scrapers.basescraper import BaseScraper
 
 
 class NovelFull(BaseScraper):

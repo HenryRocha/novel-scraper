@@ -1,9 +1,9 @@
+import sys
 from argparse import ArgumentParser, Namespace
-from sys import stdout
 
 from loguru import logger
 
-from scrapers import NovelFull
+from novelscraper.scrapers import NovelFull
 
 if __name__ == "__main__":
     # Create the argument parser and it's subparsers.
@@ -42,10 +42,13 @@ if __name__ == "__main__":
     # Configure the logger based on given arguments.
     logger.remove()
     logger.add(
-        stdout,
+        sys.stdout,
         level=50 - int(args.verbosity) * 10,
         colorize=True,
         format="[<yellow>{time:HH:mm:ss!UTC}</yellow>][<level>{level}</level>] <level>{message}</level>",
     )
 
-    args.function(args)
+    if len(sys.argv) > 1:
+        args.function(args)
+    else:
+        print("No arguments were given. Try running 'novelscraper --help' first to see the available commands.")

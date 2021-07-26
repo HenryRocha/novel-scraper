@@ -1,1 +1,1 @@
-from scrapers.novelfull import *
+from novelscraper.scrapers.novelfull import *

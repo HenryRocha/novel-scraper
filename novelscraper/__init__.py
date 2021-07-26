@@ -1,3 +1,2 @@
-from models import *
-from scrapers import *
-from utils import *
+from novelscraper.models import *
+from novelscraper.scrapers import *
