@@ -139,8 +139,25 @@ class NovelFull(BaseScraper):
         chapter_content: Tag = chapter_soup.find("div", {"id": "chapter-content"})
 
         # Find all <p> tags, which contain the text of the chapter and extract the text from them.
-        chapter_text_list: List[str] = [str(p) for p in chapter_content.find_all("p", text=True)]
-        chapter_text: str = "".join(chapter_text_list)
+        chapter_text_list: List[str] = [str(p) for p in chapter_content.find_all("p", text=True, recursive=True)]
+
+        # Workaround for the fact that the chapter's text is sometimes not within the <div id='chapter-content'>.
+        if len(chapter_text_list) <= 1:
+            logger.warning(f"Chapter '{chapter_title}' has no content. Trying to look for content outside of <div id='chapter-content'>")
+            chapter_text_list: List[str] = [str(p) for p in chapter_soup.find_all("p", text=True, recursive=True)]
+            if len(chapter_text_list) > 1:
+                logger.success(f"Found content outside of <div id='chapter-content'>. Using this as the chapter's content...")
+            else:
+                logger.error(f"Could not find content. Stopping...")
+                return {
+                    "chapter_url": chapter_url,
+                    "chapter_number": chapter_number,
+                    "chapter_title": chapter_title,
+                    "chapter_content": "Novel-Scraper failed to scrape the contents of this chapter.",
+                }
+
+        # Join the chapter's text together and return it.
+        chapter_text: str = "\n".join(chapter_text_list)
 
         # Add the chapter's information to the dictionary.
         return {"chapter_url": chapter_url, "chapter_number": chapter_number, "chapter_title": chapter_title, "chapter_content": chapter_text}
