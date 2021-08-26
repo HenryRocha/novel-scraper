@@ -11,7 +11,7 @@ README = (HERE / "README.md").read_text()
 setup(
     name="novelscraper",
     description="Novel Scraper is a CLI tool to help you download novels from different sources.",
-    version="0.1.0",
+    version="0.1.1",
     python_requires=">=3.7",
     install_requires=["requests", "beautifulsoup4", "ebooklib", "loguru"],
     entry_points="""
