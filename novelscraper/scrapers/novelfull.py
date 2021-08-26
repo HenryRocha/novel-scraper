@@ -106,7 +106,7 @@ class NovelFull(BaseScraper):
         chapters: List[Tag] = chapter_list.find_all("a", {"title": True})
 
         # Filter out all the chapters that are not in the range of the start and end chapter.
-        chapters = [chapter for chapter in chapters if self.start_chapter <= int(findall(r"\d+", chapter.get("title"))[0]) <= self.end_chapter]
+        chapters = self.filter_chapter_list(chapters)
 
         # List to hold the chapter data.
         chapters_info: List[Dict[str, str]] = []
@@ -120,12 +120,37 @@ class NovelFull(BaseScraper):
 
         return chapters_info
 
+    def filter_chapter_list(self, chapters: List[Tag]) -> List[Tag]:
+        """
+        Filters out all the chapters that are not in the range of the start and end chapter.
+        By default it will include all chapters that do not have numbers in their title.
+        """
+
+        filtered_chapters: List[Tag] = []
+        for chapter in chapters:
+            chapter_title: str = chapter.get("title")
+            chapter_number_list: List[str] = findall(r"\d+", chapter_title)
+            if len(chapter_number_list) > 0:
+                if self.start_chapter <= int(chapter_number_list[0]) <= self.end_chapter:
+                    filtered_chapters.append(chapter)
+            else:
+                filtered_chapters.append(chapter)
+
+        return filtered_chapters
+
     def scrape_chapter_page(self, chapter: Tag) -> Dict[str, str]:
-        """Scrape's the given chapter page, extracting it's contents."""
+        """
+        Scrape's the given chapter page, extracting it's contents.
+        By default, chapter that do not have a number in their title will use '-1' as the chapter number.
+        """
 
         chapter_url: str = chapter.get("href")
         chapter_title: str = chapter.get("title")
-        chapter_number: int = int(findall(r"\d+", chapter.get("title"))[0])
+        chapter_number_list: List[str] = findall(r"\d+", chapter_title)
+        if len(chapter_number_list) > 0:
+            chapter_number: int = int(chapter_number_list[0])
+        else:
+            chapter_number: int = -1
 
         logger.debug(f"Scraping chapter: '{chapter_title}'...")
 
@@ -183,7 +208,7 @@ class NovelFull(BaseScraper):
             chapter_content: str = chapter["chapter_content"]
             logger.trace(f"Adding chapter {chapter_number} to EPUB...")
 
-            book_chapter = epub.EpubHtml(title=chapter_title, file_name=f"{chapter_number}.xhtml", lang="en")
+            book_chapter = epub.EpubHtml(title=chapter_title, file_name=f"{chapter_title}.xhtml", lang="en")
             book_chapter.set_content(f"<html><body><h1>{chapter_title}</h1><p>{chapter_content}</p></body></html>")
             book.add_item(book_chapter)
             book.toc.append(book_chapter)
