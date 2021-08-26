@@ -5,7 +5,8 @@ from loguru import logger
 
 from novelscraper.scrapers import NovelFull
 
-if __name__ == "__main__":
+
+def main():
     # Create the argument parser and it's subparsers.
     parser: ArgumentParser = ArgumentParser()
     subparsers = parser.add_subparsers(help="available scrapers")
@@ -52,3 +53,7 @@ if __name__ == "__main__":
         args.function(args)
     else:
         print("No arguments were given. Try running 'novelscraper --help' first to see the available commands.")
+
+
+if __name__ == "__main__":
+    main()
