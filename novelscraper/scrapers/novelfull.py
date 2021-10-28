@@ -24,7 +24,9 @@ class NovelFull(BaseScraper):
 
     def __init__(self, url: str, start_chapter: int = 1, end_chapter: int = 1) -> None:
         if self.domain not in url:
-            raise ScraperError(f"NovelFull scraper does not support the given URL: '{url}'")
+            raise ScraperError(
+                f"NovelFull scraper does not support the given URL: '{url}'"
+            )
         else:
             self.url = url
 
@@ -34,7 +36,9 @@ class NovelFull(BaseScraper):
             self.start_chapter = start_chapter
 
         if end_chapter < 1:
-            raise ScraperError("Invalid end page, must be greater or equal to start page")
+            raise ScraperError(
+                "Invalid end page, must be greater or equal to start page"
+            )
         else:
             self.end_chapter = end_chapter
 
@@ -75,17 +79,23 @@ class NovelFull(BaseScraper):
         # Find the novel's cover image. Usually within a <img alt="..."> tag, on which the "alt" attribute is
         # the title of the novel.
         novel_cover_image_tag: Tag = soup.find("img", {"alt": self.novel_title})
-        self.novel_cover_image_bytes: bytes = self.get_page_content(self.domain + novel_cover_image_tag.get("src"))
+        self.novel_cover_image_bytes: bytes = self.get_page_content(
+            self.domain + novel_cover_image_tag.get("src")
+        )
 
         # Find the novel's author. Usually after a <h3>Author:</h3> tag.
-        self.novel_author: str = soup.find("h3", text="Author:").find_next_sibling("a").get_text()
+        self.novel_author: str = (
+            soup.find("h3", text="Author:").find_next_sibling("a").get_text()
+        )
         logger.info(f"Novel author: {self.novel_author}")
 
         # Find the novel's description. Usually within a <div id="desc-text"> tag.
         novel_description_div: str = soup.find("div", {"class": "desc-text"})
 
         # Find all <p> tags, which contain the text of the description and extract the text from them.
-        novel_description_text_list: List[str] = [p.get_text() for p in novel_description_div.find_all("p", text=True)]
+        novel_description_text_list: List[str] = [
+            p.get_text() for p in novel_description_div.find_all("p", text=True)
+        ]
         self.novel_description: str = "\n".join(novel_description_text_list)
 
     def scrape_novel_page(self, page: int) -> List[Dict[str, str]]:
@@ -131,7 +141,11 @@ class NovelFull(BaseScraper):
             chapter_title: str = chapter.get("title")
             chapter_number_list: List[str] = findall(r"\d+", chapter_title)
             if len(chapter_number_list) > 0:
-                if self.start_chapter <= int(chapter_number_list[0]) <= self.end_chapter:
+                if (
+                    self.start_chapter
+                    <= int(chapter_number_list[0])
+                    <= self.end_chapter
+                ):
                     filtered_chapters.append(chapter)
             else:
                 filtered_chapters.append(chapter)
@@ -155,7 +169,9 @@ class NovelFull(BaseScraper):
         logger.debug(f"Scraping chapter: '{chapter_title}'...")
 
         # Get the chapter's content.
-        chapter_page_content: bytes = self.get_page_content(f"{self.domain}{chapter_url}")
+        chapter_page_content: bytes = self.get_page_content(
+            f"{self.domain}{chapter_url}"
+        )
 
         # Parse the chapter's content.
         chapter_soup: BeautifulSoup = BeautifulSoup(chapter_page_content, "html.parser")
@@ -164,14 +180,22 @@ class NovelFull(BaseScraper):
         chapter_content: Tag = chapter_soup.find("div", {"id": "chapter-content"})
 
         # Find all <p> tags, which contain the text of the chapter and extract the text from them.
-        chapter_text_list: List[str] = [str(p) for p in chapter_content.find_all("p", text=True, recursive=True)]
+        chapter_text_list: List[str] = [
+            str(p) for p in chapter_content.find_all("p", text=True, recursive=True)
+        ]
 
         # Workaround for the fact that the chapter's text is sometimes not within the <div id='chapter-content'>.
         if len(chapter_text_list) <= 1:
-            logger.warning(f"Chapter '{chapter_title}' has no content. Trying to look for content outside of <div id='chapter-content'>")
-            chapter_text_list: List[str] = [str(p) for p in chapter_soup.find_all("p", text=True, recursive=True)]
+            logger.warning(
+                f"Chapter '{chapter_title}' has no content. Trying to look for content outside of <div id='chapter-content'>"
+            )
+            chapter_text_list: List[str] = [
+                str(p) for p in chapter_soup.find_all("p", text=True, recursive=True)
+            ]
             if len(chapter_text_list) > 1:
-                logger.success(f"Found content outside of <div id='chapter-content'>. Using this as the chapter's content...")
+                logger.success(
+                    f"Found content outside of <div id='chapter-content'>. Using this as the chapter's content..."
+                )
             else:
                 logger.error(f"Could not find content. Stopping...")
                 return {
@@ -185,7 +209,12 @@ class NovelFull(BaseScraper):
         chapter_text: str = "\n".join(chapter_text_list)
 
         # Add the chapter's information to the dictionary.
-        return {"chapter_url": chapter_url, "chapter_number": chapter_number, "chapter_title": chapter_title, "chapter_content": chapter_text}
+        return {
+            "chapter_url": chapter_url,
+            "chapter_number": chapter_number,
+            "chapter_title": chapter_title,
+            "chapter_content": chapter_text,
+        }
 
     def create_epub(self, chapters_info: List[Dict[str, str]]) -> None:
         """Creates an EPUB file from the given chapters information."""
@@ -208,8 +237,12 @@ class NovelFull(BaseScraper):
             chapter_content: str = chapter["chapter_content"]
             logger.trace(f"Adding chapter {chapter_number} to EPUB...")
 
-            book_chapter = epub.EpubHtml(title=chapter_title, file_name=f"{chapter_title}.xhtml", lang="en")
-            book_chapter.set_content(f"<html><body><h1>{chapter_title}</h1><p>{chapter_content}</p></body></html>")
+            book_chapter = epub.EpubHtml(
+                title=chapter_title, file_name=f"{chapter_title}.xhtml", lang="en"
+            )
+            book_chapter.set_content(
+                f"<html><body><h1>{chapter_title}</h1><p>{chapter_content}</p></body></html>"
+            )
             book.add_item(book_chapter)
             book.toc.append(book_chapter)
             book.spine.append(book_chapter)
@@ -219,7 +252,11 @@ class NovelFull(BaseScraper):
 
         # Create the epub file.
         logger.info("Creating EPUB file...")
-        epub.write_epub(f"{self.novel_title}.Chapters{self.start_chapter}-{self.end_chapter}.epub", book, {})
+        epub.write_epub(
+            f"{self.novel_title}.Chapters{self.start_chapter}-{self.end_chapter}.epub",
+            book,
+            {},
+        )
 
     def scrape(self) -> None:
         self.scrape_novel_info()
