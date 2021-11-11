@@ -1,2 +1,11 @@
+"""
+models/exceptions.py
+
+Defines custom exceptions for the novelscraper package.
+"""
+
+
 class ScraperError(Exception):
-    pass
+    """
+    Base class for all exceptions raised by the scraper.
+    """

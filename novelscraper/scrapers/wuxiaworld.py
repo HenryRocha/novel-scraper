@@ -1,46 +1,42 @@
+"""
+scrapers/wuxiaworld.py
+
+Defines and implements the WuxiaWorld scraper class.
+"""
+
 from argparse import Namespace
 from concurrent.futures import ThreadPoolExecutor
 from typing import Dict, List
 
 from bs4 import BeautifulSoup
 from bs4.element import Tag
-from ebooklib import epub
 from loguru import logger
 from novelscraper.models import ScraperError
 from novelscraper.scrapers.basescraper import BaseScraper
 
 
 class WuxiaWorld(BaseScraper):
-    max_workers: int = 50
-    domain: str = "https://www.wuxiaworld.com"
-    url: str
-    start_chapter: int
-    end_chapter: int
-    novel_title: str
-    novel_author: str
-    novel_description: str
-    novel_cover_image_bytes: bytes
-    novel_chapter_link: str
+    """
+    This scraper is used to scrape novel's from WuxiaWorld.
+    """
 
     def __init__(self, url: str, start_chapter: int = 1, end_chapter: int = 1) -> None:
+        self.domain = "https://www.wuxiaworld.com"
+
         if self.domain not in url:
-            raise ScraperError(
-                f"WuxiaWorld scraper does not support the given URL: '{url}'"
-            )
-        else:
-            self.url = url
+            raise ScraperError(f"WuxiaWorld scraper does not support the given URL: '{url}'")
+
+        self.url = url
 
         if start_chapter < 1:
             raise ScraperError("Invalid start chapter, must be greater than 0")
-        else:
-            self.start_chapter = start_chapter
+
+        self.start_chapter = start_chapter
 
         if end_chapter < 1:
-            raise ScraperError(
-                "Invalid end chapter, must be greater or equal to start chapter"
-            )
-        else:
-            self.end_chapter = end_chapter
+            raise ScraperError("Invalid end chapter, must be greater or equal to start chapter")
+
+        self.end_chapter = end_chapter
 
     def scrape_novel_info(self) -> None:
         """Scrapes the novel's information from the novel's main page."""
@@ -57,25 +53,22 @@ class WuxiaWorld(BaseScraper):
         self.novel_title: str = soup.find("div", {"class": "novel-body"}).h2.text
         logger.info(f"Novel title: {self.novel_title}")
 
-        # Find the novel's cover image. Usually within a <img alt="..."> tag, on which the "alt" attribute is
-        # the title of the novel.
+        # Find the novel's cover image. Usually within a <img alt="..."> tag,
+        # on which the "alt" attribute is the title of the novel.
         novel_cover_image_tag: Tag = soup.find("img", {"class": "img-thumbnail"})
         self.novel_cover_image_bytes: bytes = self.get_page_content(
             novel_cover_image_tag.get("src")
         )
 
         # Find the novel's author. Usually after a <h3>Author:</h3> tag.
-        self.novel_author: str = (
-            soup.find("dt", text="Author:").find_next_sibling("dd").get_text()
-        )
+        self.novel_author: str = soup.find("dt", text="Author:").find_next_sibling("dd").get_text()
         logger.info(f"Novel author: {self.novel_author}")
 
         # Find the novel's description. Usually within a <div id="desc-text"> tag.
-        novel_description_div: str = soup.find("h3", text="Synopsis").find_next_sibling(
-            "div"
-        )
+        novel_description_div: str = soup.find("h3", text="Synopsis").find_next_sibling("div")
 
-        # Find all <p> tags, which contain the text of the description and extract the text from them.
+        # Find all <p> tags, which contain the text of the description
+        # and extract the text from them.
         novel_description_text_list: List[str] = [
             p.get_text() for p in novel_description_div.find_all("p", text=True)
         ]
@@ -91,7 +84,8 @@ class WuxiaWorld(BaseScraper):
     def scrape_chapter_page(self, chapter_url: str) -> Dict[str, str]:
         """
         Scrape's the given chapter page, extracting it's contents.
-        By default, chapter that do not have a number in their title will use '-1' as the chapter number.
+        By default, chapter that do not have a number in their title will
+        use '-1' as the chapter number.
         """
 
         logger.info(f"Scraping chapter: {chapter_url}...")
@@ -134,51 +128,12 @@ class WuxiaWorld(BaseScraper):
 
         return chapter_info
 
-    def create_epub(self, chapters_info: List[Dict[str, str]]) -> None:
-        """Creates an EPUB file from the given chapters information."""
-
-        book = epub.EpubBook()
-        book.set_identifier("nvsc_100")
-        book.set_title(self.novel_title)
-        book.add_author(self.novel_author)
-        book.set_cover("cover.png", self.novel_cover_image_bytes)
-        book.set_language("en")
-        book.add_metadata("DC", "description", self.novel_description)
-        book.spine = ["nav"]
-
-        # Sort the chapter in ascending order, based on the chapter's number.
-        chapters_info.sort(key=lambda chapter: chapter["chapter_number"])
-
-        for chapter in chapters_info:
-            chapter_number: int = chapter["chapter_number"]
-            chapter_title: str = chapter["chapter_title"]
-            chapter_content: str = chapter["chapter_content"]
-            logger.trace(f"Adding chapter {chapter_number} to EPUB...")
-
-            book_chapter = epub.EpubHtml(
-                title=chapter_title, file_name=f"{chapter_title}.xhtml", lang="en"
-            )
-            book_chapter.set_content(
-                f"<html><body><h1>{chapter_title}</h1><p>{chapter_content}</p></body></html>"
-            )
-            book.add_item(book_chapter)
-            book.toc.append(book_chapter)
-            book.spine.append(book_chapter)
-
-        book.add_item(epub.EpubNcx())
-        book.add_item(epub.EpubNav())
-
-        # Create the epub file.
-        logger.info("Creating EPUB file...")
-
-        filename_novel_title: str = self.novel_title.replace(" ", "_")
-        epub.write_epub(
-            f"{filename_novel_title}.Chapters{self.start_chapter}-{self.end_chapter}.epub",
-            book,
-            {},
-        )
-
     def scrape(self) -> None:
+        """
+        Scrapes the novel's chapters and creates an EPUB file.
+        Ties up all the methods together and runs them in sequence.
+        """
+
         self.scrape_novel_info()
 
         # List of pages to scrape.
@@ -202,5 +157,9 @@ class WuxiaWorld(BaseScraper):
 
     @staticmethod
     def run(args: Namespace) -> None:
-        wuxiaWorld = WuxiaWorld(args.url, args.start_chapter, args.end_chapter)
-        wuxiaWorld.scrape()
+        """
+        Create the scraper and runs it.
+        """
+
+        wuxia_world = WuxiaWorld(args.url, args.start_chapter, args.end_chapter)
+        wuxia_world.scrape()
